@@ -1,0 +1,75 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+
+#vetor em cordenadas polares
+def polaris(vetor):
+    Ro = np.linalg.norm(vetor)
+    r = np.sqrt((Ro**2)-(vetor[2]**2))
+    theta = f"theta: {np.arccos(vetor[0]/r)}"
+    phi = f"phi: {np.arccos(vetor[2]/Ro)}"
+    return phi,theta
+
+#função diferenciavel
+def dydt(t, y):
+    r, v = y[:3], y[3:]
+    Cd = 0.47
+    Cl = 0.2
+    p = 1.2
+    m = 0.43
+    A = 0.038
+    g = np.array([0, 0, -9.81])
+    Fa = -0.5 * Cd * p * A * np.linalg.norm(v) * v
+    Fm = 0.5 * Cl * p * A * np.cross(w, v)
+    return np.concatenate([v, g + (Fa + Fm) / m])
+
+#intervalo e espaçamento de t
+t_span = (0, 10)
+t_eval = np.linspace(0, 10, 1000)
+
+
+#Insira manualmente os vetores w e v
+w = np.array([0, 0, 0])
+v0 = np.array([0, 40,10])
+
+#solve_ivp
+r0 = np.array([0, 0, 0])
+y0 = np.concatenate([r0, v0])
+S = solve_ivp(dydt, t_span, y0, t_eval=t_eval)
+r = S.y[:3]
+
+#plot de 4 graficos em diferentes angulos
+def plot(k):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+
+    ax.plot(r[0], r[1], r[2])
+
+
+    x = np.linspace(-10, 10, 100)
+    y = np.linspace(0, 35, 100)
+    X, Y = np.meshgrid(x, y)
+    Z = np.zeros_like(X)
+
+    ax.plot_surface(X, Y, Z, color='green', alpha=0.3, rstride=100, cstride=100)
+    ax.plot([2.5, 2.5], [35, 35], [0, 2], color='black')
+    ax.plot([-2.5, -2.5], [35, 35], [0, 2], color='black')
+    ax.plot([2.5, -2.5], [35, 35], [2, 2], color='black')
+
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    ax.set_xlim([-10, 10])
+    ax.set_ylim([0, 35])
+    ax.set_zlim([0, 10])
+
+
+    ax.view_init(elev=10, azim=k)
+
+plt.show()
+
+
+plot(90)
