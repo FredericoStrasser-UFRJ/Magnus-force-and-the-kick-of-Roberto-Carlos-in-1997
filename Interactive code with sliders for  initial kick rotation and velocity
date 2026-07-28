@@ -1,0 +1,180 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+from scipy.integrate import solve_ivp
+from matplotlib.widgets import Slider, Button
+
+
+
+# Differential equation
+def dydt(t, state, w):
+    position = state[:3]
+    velocity = state[3:]
+    #Drag force
+    Cd = 0.47
+    #Magnus coeficient
+    Cl = 0.2
+    #Air density
+    rho = 1.2
+    #Ball's mass
+    mass = 0.43
+    #Area of a ball's section
+    area = 0.038
+    gravity = np.array([0.0, 0.0, -9.81])
+    drag_force = (
+        -0.5
+        * Cd
+        * rho
+        * area
+        * np.linalg.norm(velocity)
+        * velocity
+    )
+    magnus_force = (
+        0.5
+        * Cl
+        * rho
+        * area
+        * np.cross(w, velocity)
+    )
+    acceleration = gravity + (drag_force + magnus_force) / mass
+    return np.concatenate([velocity, acceleration])
+
+# Stop the simulation when the ball reaches the ground
+def hit_ground(t, state, w):
+    return state[2]
+hit_ground.terminal = True
+hit_ground.direction = -1
+
+# Run one simulation
+def simulate(v0, w):
+    r0 = np.array([0.0, 0.0, 0.0])
+    initial_state = np.concatenate([r0, v0])
+    #Defines the time interval 
+    t_eval = np.linspace(0, 10, 1000)
+    solution = solve_ivp(
+        dydt,
+        t_span=(0, 10),
+        y0=initial_state,
+        t_eval=t_eval,
+        args=(w,),
+        events=hit_ground
+    )
+    position = solution.y[:3]
+    return solution.t, position
+
+
+
+# Initial values
+initial_velocity = np.array([0.0, 40.0, 10.0])
+initial_rotation = np.array([0.0, 0.0, 0.0])
+time, position = simulate(initial_velocity, initial_rotation)
+
+# Create figure
+fig = plt.figure(figsize=(12, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+# Space for sliders
+plt.subplots_adjust(bottom=0.36)
+trajectory, = ax.plot(
+    position[0],
+    position[1],
+    position[2],
+    color="blue",
+    linewidth=2
+)
+# Football field
+field_x = np.linspace(-10, 10, 2)
+field_y = np.linspace(0, 40, 2)
+X, Y = np.meshgrid(field_x, field_y)
+Z = np.zeros_like(X)
+ax.plot_surface(
+    X,
+    Y,
+    Z,
+    color="green",
+    alpha=0.3
+)
+# Goal
+ax.plot([2.5, 2.5], [35, 35], [0, 2], color="black")
+ax.plot([-2.5, -2.5], [35, 35], [0, 2], color="black")
+ax.plot([2.5, -2.5], [35, 35], [2, 2], color="black")
+ax.set_xlabel("X position (m)")
+ax.set_ylabel("Y position (m)")
+ax.set_zlabel("Z position (m)")
+ax.set_xlim(-10, 10)
+ax.set_ylim(0, 40)
+ax.set_zlim(0, 15)
+ax.view_init(elev=15, azim=90)
+
+
+# Info
+information = ax.text2D(
+    0.02,
+    0.95,
+    "",
+    transform=ax.transAxes
+)
+
+# Sliders
+slider_color = "#c8d8e8"
+
+ax_vx = fig.add_axes([0.20, 0.27, 0.58, 0.025], facecolor=slider_color)
+ax_vy = fig.add_axes([0.20, 0.23, 0.58, 0.025], facecolor=slider_color)
+ax_vz = fig.add_axes([0.20, 0.19, 0.58, 0.025], facecolor=slider_color)
+
+ax_wx = fig.add_axes([0.20, 0.14, 0.58, 0.025], facecolor=slider_color)
+ax_wy = fig.add_axes([0.20, 0.10, 0.58, 0.025], facecolor=slider_color)
+ax_wz = fig.add_axes([0.20, 0.06, 0.58, 0.025], facecolor=slider_color)
+
+slider_vx = Slider(ax_vx, "vx", -20, 20, valinit=0)
+slider_vy = Slider(ax_vy, "vy", 0, 60, valinit=40)
+slider_vz = Slider(ax_vz, "vz", 0, 30, valinit=10)
+
+slider_wx = Slider(ax_wx, "ωx", -100, 100, valinit=0)
+slider_wy = Slider(ax_wy, "ωy", -100, 100, valinit=0)
+slider_wz = Slider(ax_wz, "ωz", -100, 100, valinit=0)
+
+
+
+# Button
+def update(event):
+    v0 = np.array([
+        slider_vx.val,
+        slider_vy.val,
+        slider_vz.val
+    ])
+
+    w = np.array([
+        slider_wx.val,
+        slider_wy.val,
+        slider_wz.val
+    ])
+
+    time, new_position = simulate(v0, w)
+
+    trajectory.set_data(
+        new_position[0],
+        new_position[1]
+    )
+
+    trajectory.set_3d_properties(new_position[2])
+
+    information.set_text(
+        f"Flight time: {time[-1]:.2f} s\n"
+        f"Final position: "
+        f"({new_position[0, -1]:.1f}, "
+        f"{new_position[1, -1]:.1f}, "
+        f"{new_position[2, -1]:.1f}) m"
+    )
+
+    fig.canvas.draw_idle()
+
+
+button_axis = fig.add_axes([0.82, 0.12, 0.12, 0.06])
+simulate_button = Button(button_axis, "Simulate")
+
+simulate_button.on_clicked(update)
+
+update(None)
+
+plt.show()
