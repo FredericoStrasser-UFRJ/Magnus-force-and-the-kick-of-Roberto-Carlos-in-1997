@@ -2,43 +2,45 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
-#vetor em cordenadas polares
-def polaris(vetor):
-    Ro = np.linalg.norm(vetor)
-    r = np.sqrt((Ro**2)-(vetor[2]**2))
-    theta = f"theta: {np.arccos(vetor[0]/r)}"
-    phi = f"phi: {np.arccos(vetor[2]/Ro)}"
-    return phi,theta
 
-#função diferenciavel
+#Diferenciable function with fixed parameters
 def dydt(t, y):
     r, v = y[:3], y[3:]
+    #Drag coeficient
     Cd = 0.47
+    #Magnus coeficient
     Cl = 0.2
+    #Air density
     p = 1.2
+    #Mass of the ball
     m = 0.43
+    #Area of a section of the ball(circle)
     A = 0.038
+    #Gravity
     g = np.array([0, 0, -9.81])
+    #Drag force
     Fa = -0.5 * Cd * p * A * np.linalg.norm(v) * v
+    #Magnus force
     Fm = 0.5 * Cl * p * A * np.cross(w, v)
+    #Bidimensional derivative
     return np.concatenate([v, g + (Fa + Fm) / m])
 
-#intervalo e espaçamento de t
+#Interval and spacing of time
 t_span = (0, 10)
 t_eval = np.linspace(0, 10, 1000)
 
 
-#Insira manualmente os vetores w e v
-w = np.array([0, 0, 0])
+#Insert manualy the rotation and velocity vectors
+w = np.array([0, 0, 10])
 v0 = np.array([0, 40,10])
 
-#solve_ivp
+#Solve_ivp solves the equation for every t
 r0 = np.array([0, 0, 0])
 y0 = np.concatenate([r0, v0])
 S = solve_ivp(dydt, t_span, y0, t_eval=t_eval)
 r = S.y[:3]
 
-#plot de 4 graficos em diferentes angulos
+#Plot the graph 
 def plot(k):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -52,6 +54,7 @@ def plot(k):
     X, Y = np.meshgrid(x, y)
     Z = np.zeros_like(X)
 
+#Draw the field and the goal
     ax.plot_surface(X, Y, Z, color='green', alpha=0.3, rstride=100, cstride=100)
     ax.plot([2.5, 2.5], [35, 35], [0, 2], color='black')
     ax.plot([-2.5, -2.5], [35, 35], [0, 2], color='black')
@@ -69,7 +72,7 @@ def plot(k):
 
     ax.view_init(elev=10, azim=k)
 
-plt.show()
+    plt.show()
 
 
 plot(90)
